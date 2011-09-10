@@ -1,0 +1,23 @@
+
+#tvdb-table{
+border-collapse:collapse;
+margin:10px auto;
+}
+#tvdb-table tr td{
+padding: 4px;
+
+border:1px solid #98BF21;
+}
+#tvdb-table td:first-child{
+width: 80px;
+
+}
+.t-odd{
+background-color:#FF6700;
+}
+.wp-pagenavi{
+float:left !important;
+margin:5px 20px;
+}
+
+
