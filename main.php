@@ -351,6 +351,56 @@ class wptheTvDbApi{
 			exit;
 		}
 	}
+	function get_query(){
+		global $wpdb;
+		$paged = (get_query_var('paged')) ? get_query_var('paged') : 1;
+
+		$q_array_base = array(
+		 'post_type' => 'series',
+		 'post_status' => 'publish',
+		 'posts_per_page' => 10, 
+		 'paged' => $paged 
+		);
+		$my_query = new WP_Query($q_array_base);
+
+		if( isset($_REQUEST['tvdb-search']) ){
+			$s = $_REQUEST['search-tvdbseries'];
+			if(preg_match('/\S/',$s)){
+				$my_query -> posts = array();
+				
+				$my_query = new WP_Query( array_merge($q_array_base, array('s' => $s, 'posts_per_page' => 5 )) );
+				$found_posts = array();
+				foreach( $my_query -> posts as $single)
+					$found_posts[] = $single -> ID;
+			
+				$series_ids = $wpdb->get_col("SELECT ID FROM $wpdb->posts WHERE post_type = 'series' and post_status = 'publish'");
+				
+				$to_query = array_diff($series_ids, $found_posts);
+				$posts_to_add= array();
+				foreach($to_query as $id){
+						$meta = get_post_meta($id, 'series_meta');
+						foreach( $meta[0] as $each_meta)
+							if(stripos($each_meta, $s) !== false)						
+								$posts_to_add[] = $id;
+								
+				}
+				$posts_to_add = array_unique($posts_to_add);
+				if(! empty($posts_to_add))
+					$new_query= new WP_Query( array('post__in' => $posts_to_add, 'posts_per_page' => 5) );
+				else 
+					$new_query = new WP_Query(array('post_type' => 'random_invalid_post_type'));
+				$all_posts = array_merge($new_query -> posts, $my_query -> posts);				
+				$my_query -> post_count = 10;
+				$my_query -> found_posts = count($found_posts) + count($posts_to_add);
+				$my_query -> max_num_pages = ceil($my_query -> found_posts /10);
+				$my_query -> posts = $all_posts;//array_slice($all_posts,($paged-1)*10,10);
+				
+			}	
+
+		}
+	return $my_query;
+		
+	}
 	
 	function exists_in_table($id){
 	global $wpdb;

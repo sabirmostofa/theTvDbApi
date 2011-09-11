@@ -22,12 +22,8 @@ $paged = get_query_var ('paged');
 
 
 
-$my_query = new WP_Query( array(
- 'post_type' => 'series',
- 'post_status' => 'publish',
- 'posts_per_page' => 10, 
- 'paged' => $paged 
-) );
+$my_query = $wptheTvDbApi -> get_query();
+//var_dump($my_query);
 
 //If the total page number > 1 we will show the pagination
 
@@ -36,6 +32,20 @@ $my_query = new WP_Query( array(
 ?>
 <!-- HTML Image Code Below this line -->
 <img class="aligncenter size-full wp-image-2336" title="networks" src="http://freecast.com/wp-content/uploads/2011/09/networks.jpg" alt="" width="936" height="75" />
+
+<?php
+if(isset($_REQUEST['search-tvdbseries'])):
+	echo "Search Result For \"{$_REQUEST['search-tvdbseries']}\". Total {$my_query -> found_posts} Records found. " ;
+	echo "<a href=\"".get_permalink($post -> ID)."\">Clear Search</a><br/>"; 
+endif;
+ ?>
+
+<form method='get'action='' style="margin:5px 0 0 20px">
+<input type='text' name='search-tvdbseries' value="<?php echo $a = (isset($_REQUEST['search-tvdbseries']))? $_REQUEST['search-tvdbseries']:'';  ?>"/>
+<input type='submit' name='tvdb-search' value='Search'/>
+<input type='hidden' name='page_id' value="<?php echo $post -> ID  ?>"/>
+</form>
+
 
 <?php
 if($my_query->max_num_pages>1)
@@ -47,8 +57,10 @@ wp_pagenavi(array(
 echo "<div style=\"clear:both;\"></div>";
 
 $counter = 0;
- while ($my_query->have_posts()) : $my_query->the_post();
-	 $post_id = get_the_ID();
+
+  
+  foreach ($my_query-> posts as $single):
+	 $post_id = $single ->ID;
 	 $meta = get_post_meta($post_id,'series_meta');
 	 
 	 
@@ -74,7 +86,7 @@ $counter = 0;
 			<a href="<?php echo get_permalink($post_id) ?>"><h2 style="font-weight:bold;font-size:14px;text-align:center;display:inline;"><?php echo $SeriesName ?></h2></a>
 			
 			
-			<p style=""><?php echo substr( get_the_content(), 0 ,200 ); ?><a href="<?php echo get_permalink($post_id) ?>"> [....]</a></p>
+			<p style=""><?php echo substr( $single -> post_content, 0 ,200 ); ?><a href="<?php echo get_permalink($post_id) ?>"> [....]</a></p>
 		</div>
 	<?php if($counter%2==0):?>
 	</div>
@@ -83,7 +95,14 @@ $counter = 0;
 	<?php endif; ?>
 <?php
 	 
-endwhile;
+endforeach;
+  
+ 
+ /* 
+ * ******/
+
+
+
 
 if($my_query->max_num_pages>1)   
 if(function_exists('wp_pagenavi'))
@@ -91,6 +110,8 @@ wp_pagenavi(array(
    'query' =>$my_query   
    ));
 echo "<div style=\"clear:both;\"></div>";
+//var_dump($my_query);
+
 
 get_footer();
 
