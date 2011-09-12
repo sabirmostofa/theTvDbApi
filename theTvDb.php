@@ -18,12 +18,13 @@ global $wpdb,$wptheTvDbApi;
 exit;
 
 */
-$paged = get_query_var ('paged'); 
+$paged = (get_query_var ('paged'))? get_query_var ('paged') :1; 
 
 
 
 $my_query = $wptheTvDbApi -> get_query();
 //var_dump($my_query);
+//var_dump($my_query->s);
 
 //If the total page number > 1 we will show the pagination
 
@@ -33,15 +34,16 @@ $my_query = $wptheTvDbApi -> get_query();
 <!-- HTML Image Code Below this line -->
 <img class="aligncenter size-full wp-image-2336" title="networks" src="http://freecast.com/wp-content/uploads/2011/09/networks.jpg" alt="" width="936" height="75" />
 
+<div style="<?php if($paged == 1) echo 'float:left;margin-top:25px;' ?>">
 <?php
 if(isset($_REQUEST['search-tvdbseries'])):
-	echo "Search Result For \"{$_REQUEST['search-tvdbseries']}\". Total {$my_query -> found_posts} Records found. " ;
+	echo "<p style=\"display:inline\">Search Result For \"{$my_query -> s}\". Total {$my_query -> found_posts} Records found. </p>" ;
 	echo "<a href=\"".get_permalink($post -> ID)."\">Clear Search</a><br/>"; 
 endif;
  ?>
-
-<form method='get'action='' style="margin:5px 0 0 20px">
-<input type='text' name='search-tvdbseries' value="<?php echo $a = (isset($_REQUEST['search-tvdbseries']))? $_REQUEST['search-tvdbseries']:'';  ?>"/>
+</div>
+<form method='get'action='<?php echo get_permalink($post -> ID); ?>' style="float:right;margin:25px 20px 0 0;">
+<input type='text' name='search-tvdbseries' value="<?php echo $a = (isset($my_query -> s))? $my_query -> s:'';  ?>"/>
 <input type='submit' name='tvdb-search' value='Search'/>
 <input type='hidden' name='page_id' value="<?php echo $post -> ID  ?>"/>
 </form>
@@ -102,7 +104,7 @@ endforeach;
  * ******/
 
 
-
+echo "<div style=\"clear:both;\"></div>";
 
 if($my_query->max_num_pages>1)   
 if(function_exists('wp_pagenavi'))

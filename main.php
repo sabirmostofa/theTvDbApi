@@ -32,6 +32,7 @@ class wptheTvDbApi{
 		add_action('wp_print_styles' , array($this,'front_css'));
 		add_action('init', array($this,'add_post_type'));
 		add_action('init', array($this,'return_image'));
+		add_action('init', array($this,'edit_query'));
 		add_action('thetvdb_cron',array($this,'start_cron'));
 		register_activation_hook(__FILE__, array($this, 'create_table'));
 		//register_activation_hook(__FILE__, array($this, 'init_cron'));
@@ -71,6 +72,14 @@ class wptheTvDbApi{
 	function init_cron(){		
 		if(!wp_get_schedule('thetvdb_cron'))
 			wp_schedule_event(time(), 'hourly', 'thetvdb_cron');
+	}
+	
+	function edit_query(){
+		if( isset($_REQUEST['search-tvdbseries']) && stripos($_SERVER['REQUEST_URI'], '+') !==false){
+			$q_string = preg_replace( '/\+/','-',$_SERVER['REQUEST_URI'] );
+			header("Location: ".$q_string);
+			exit;
+		}
 	}
 	
 	function disable_cron(){
@@ -364,11 +373,11 @@ class wptheTvDbApi{
 		$my_query = new WP_Query($q_array_base);
 
 		if( isset($_REQUEST['tvdb-search']) ){
-			$s = $_REQUEST['search-tvdbseries'];
+			$s = str_replace('-',' ', $_REQUEST['search-tvdbseries']);
 			if(preg_match('/\S/',$s)){
 				$my_query -> posts = array();
 				
-				$my_query = new WP_Query( array_merge($q_array_base, array('s' => $s, 'posts_per_page' => 5 )) );
+				$my_query = new WP_Query( array_merge($q_array_base, array('s' => $s, 'posts_per_page' => -1, 'paged'=>$paged )) );
 				$found_posts = array();
 				foreach( $my_query -> posts as $single)
 					$found_posts[] = $single -> ID;
@@ -386,14 +395,15 @@ class wptheTvDbApi{
 				}
 				$posts_to_add = array_unique($posts_to_add);
 				if(! empty($posts_to_add))
-					$new_query= new WP_Query( array('post__in' => $posts_to_add, 'posts_per_page' => 5) );
+					$new_query= new WP_Query( array('post__in' => $posts_to_add, 'posts_per_page' => -1 , 'paged'=>'') );
 				else 
 					$new_query = new WP_Query(array('post_type' => 'random_invalid_post_type'));
 				$all_posts = array_merge($new_query -> posts, $my_query -> posts);				
 				$my_query -> post_count = 10;
-				$my_query -> found_posts = count($found_posts) + count($posts_to_add);
+				$my_query -> found_posts = count($all_posts);//count($found_posts) + count($posts_to_add);
 				$my_query -> max_num_pages = ceil($my_query -> found_posts /10);
-				$my_query -> posts = $all_posts;//array_slice($all_posts,($paged-1)*10,10);
+				$my_query -> posts = array_slice($all_posts,($paged-1)*10,10);
+				$my_query -> s = $s;
 				
 			}	
 
