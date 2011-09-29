@@ -27,18 +27,82 @@ class wptheTvDbApi{
 	public $info= array('id','Actors','ContentRating','FirstAired','Genre','IMDB_ID','Network','Overview','Rating','Runtime','SeriesName','Status','banner','fanart','poster');
 
 	
-	function __construct(){
-		$this -> build_vars();
-		add_action('wp_print_styles' , array($this,'front_css'));
-		add_action('init', array($this,'add_post_type'));
-		add_action('init', array($this,'return_image'));
-		add_action('init', array($this,'edit_query'));
-		add_action('thetvdb_cron',array($this,'start_cron'));
-		register_activation_hook(__FILE__, array($this, 'create_table'));
-		//register_activation_hook(__FILE__, array($this, 'init_cron'));
-		register_deactivation_hook(__FILE__, array($this,'disable_cron'));
+        function __construct(){
+            $this -> build_vars();
+             add_action('wp_enqueue_scripts' , array($this,'front_scripts'));
+             add_filter('the_content',array($this, 'filter_content' ),1000 );
+             add_action('wp_print_styles' , array($this,'front_css'));
+             add_action('init', array($this,'add_post_type'));
+             add_action('init', array($this,'return_image'));
+             add_action('init', array($this,'edit_query'));
+             add_action('thetvdb_cron',array($this,'start_cron'));
+             register_activation_hook(__FILE__, array($this, 'create_table'));
+             //register_activation_hook(__FILE__, array($this, 'init_cron'));
+             register_deactivation_hook(__FILE__, array($this,'disable_cron'));
+             // Adding the iframe to links
+             add_action('wp', array($this, 'add_iframe_code'));
+             add_action( 'wp_ajax_controll-soft-button', array($this,'controll_button' ));
 			
+        }
+
+        	function front_scripts(){
+                    if( stripos($_SERVER['REQUEST_URI'], 'membership-details') !== false || stripos($_SERVER['REQUEST_URI'], 'iframe-page') !== false){
+                        wp_enqueue_script('jquery');
+                                if(!(is_admin())){
+                                        wp_enqueue_script('kt_front_script', plugins_url('/' , __FILE__).'js/script_front.js');
+                                        wp_localize_script('kt_front_script', 'ktSettings',
+                                                        array(
+                                                        'ajaxurl'=>admin_url('admin-ajax.php'),
+                                                        'pluginurl' => plugins_url('/' , __FILE__),                                                       
+                                                        'site_url' => site_url()
+                                                        ));
+
+                                }
+                    }
 	}
+        
+        function add_iframe_code(){
+             global $post;
+			$agent = $_SERVER['HTTP_USER_AGENT'];
+            if(!preg_match('/iPhone|Android|Blackberry/i', $agent))
+                if(is_page() || is_single())
+                    if( stripos ($post -> post_content,'[link-library' ) !== false)
+                        add_action('wp_enqueue_scripts' , array($this,'front_iframe_scripts'));           
+            
+                
+        }
+        
+        function front_iframe_scripts(){
+            wp_enqueue_script('jquery');            
+            wp_enqueue_script('kt_front_script', plugins_url('/' , __FILE__).'js/script_front.js');
+            wp_localize_script('kt_front_script', 'ktSettings',
+                    array(
+                        'ajaxurl'=>admin_url('admin-ajax.php'),
+                        'pluginurl' => plugins_url('/' , __FILE__),
+                        'site_url' => site_url()
+            ));
+
+            
+        }
+
+        function filter_content($content){
+            global $wpdb, $post;
+            $series_ids = $wpdb->get_col("SELECT ID FROM $wpdb->posts WHERE post_type = 'series' and post_status = 'publish'");
+            if(!in_array($post -> ID, $series_ids))
+                return $content;
+            return;
+            /*
+            $dom = new DOMDocument();
+            $dom ->loadHTML($content);
+            foreach($dom ->getElementsByTagName('div') as $node):
+                    if($node -> getAttribute('class') == 'ratingstars' || $node -> getAttribute('class') == 'thumblock' ){
+                            $node-> parentNode->removeChild($node);
+                          
+                    }
+            endforeach;
+            return $dom->saveHTML();    
+            */       
+        }
 	
 	function build_vars(){
 		$this -> mirror_url = "http://www.thetvdb.com/api/{$this->api_key}/mirrors.xml";
@@ -65,6 +129,8 @@ class wptheTvDbApi{
 					),
 				'public' => true,
 				'has_archive' => true,
+                                                                       'capability_type' => 'post',
+                                                                       'taxonomies'  => array('category','post_tag')
 				)
 			);
 		
@@ -119,7 +185,16 @@ class wptheTvDbApi{
 	}
 	
 	function end_cron_func(){
-		update_option('thetvdb_last_cron',time());		
+		update_option('thetvdb_last_cron',time());
+                                    global $wpdb;
+                                    $series_ids = $wpdb->get_col("SELECT ID FROM $wpdb->posts WHERE post_type = 'series' and post_status = 'publish'");
+                                     wp_insert_term('TvDbSeries','category');
+                                     $term = get_term_by('name','TvDbSeries','category');
+                                     $term_id = $term -> term_id;
+                                     foreach($series_ids as $id){
+                                 
+                                        wp_set_post_terms( $id,$term_id,'category', true );
+                                     }
 	}
 	
 	function check_and_remove(){
@@ -214,8 +289,10 @@ class wptheTvDbApi{
 
        // Insert the post into the database
 		$res=wp_insert_post( $my_post );
-		if($res)
-			add_post_meta($res,'series_meta',$info);
+		if($res){
+                                        add_post_meta($res,'series_meta',$info);
+
+                                     }
 		$this->upload_image($id,array('banner' => $banner, 'poster' => $poster))	;
 			
 	}
@@ -411,7 +488,22 @@ class wptheTvDbApi{
 	return $my_query;
 		
 	}
-	
+
+
+        //AJAX
+        function controll_button(){
+            $user = wp_get_current_user();
+            $id = $user -> ID;           
+            if($num = get_user_meta($id,'soft_button_clicks',true))
+                     update_user_meta($id, 'soft_button_clicks',++$num);
+            else {
+              $num=1;
+                update_user_meta($id, 'soft_button_clicks',$num);
+           }
+           //echo get_user_meta($id,'soft_button_clicks',true); 
+          echo  ($num<5)? 'true':'false';
+          exit;
+        }
 	function exists_in_table($id){
 	global $wpdb;
 	//$wpdb = new wpdb( DB_USER, DB_PASSWORD, DB_NAME, DB_HOST );

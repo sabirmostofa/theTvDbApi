@@ -25,10 +25,7 @@ global $post;
 				$b_img = $base['baseurl']."/{$id}/banner{$p_ext}";
 				$f_img = $base['baseurl']."/{$id}/fanart{$p_ext}";				
 				?>
-				<!--
-				
-				Image Here---HTML CODE BLOCK
-				-->
+			
 				
 		<div style="text-align:center;">
 			<img src="<?php echo $b_img ?>"/>
@@ -85,6 +82,6 @@ global $post;
 
 			</div><!-- #content -->
 		</div><!-- #primary -->
-	<?php get_sidebar(); ?>
+	<?php// get_sidebar(); ?>
 
 <?php get_footer(); ?>
