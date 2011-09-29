@@ -290,9 +290,11 @@ class wptheTvDbApi{
        // Insert the post into the database
 		$res=wp_insert_post( $my_post );
 		if($res){
-                                        add_post_meta($res,'series_meta',$info);
+			add_post_meta($res,'series_meta',$info);
+			$default_value = get_option('tvdvseries_posts_optios');
+			add_post_meta($res,'_mgm_post_options',$default_value,true);                                   
 
-                                     }
+          }
 		$this->upload_image($id,array('banner' => $banner, 'poster' => $poster))	;
 			
 	}
